@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+
+# env
+.venv/
+.env
+
+# uv
+uv.lock
+
+.env
+.venv
+
+data/
+
+logs/
