@@ -4,7 +4,7 @@ __pycache__/
 # env
 .venv/
 .env
-
+.vscode
 # uv
 uv.lock
 

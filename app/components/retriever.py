@@ -1,7 +1,7 @@
 from langchain_chroma import Chroma
 
-from app.core.config import settings
-from app.services.embedding import embeddings_model
+from app.config import settings
+from app.components.embedding import embeddings_model
 
 
 # Load existing Chroma index

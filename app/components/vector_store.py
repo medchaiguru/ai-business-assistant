@@ -3,8 +3,10 @@ from typing import List
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
-from app.core.logger import logger
+from app.logger import get_logger
 
+
+logger = get_logger(__name__)
 
 def create_chroma_index(
     docs: List[Document],

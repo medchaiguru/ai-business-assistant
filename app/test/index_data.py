@@ -2,11 +2,11 @@
 
 from pathlib import Path
 
-from app.services.embedding import embeddings_model
-from app.services.data_source import json_data_to_langchain_docs
-from app.services.vector_store import create_chroma_index
-from app.core.config import settings
-from app.services.splitter import text_splitter
+from app.components.embedding import embeddings_model
+from app.components.data_source import json_data_to_langchain_docs
+from app.components.vector_store import create_chroma_index
+from app.config import settings
+from app.components.splitter import text_splitter
 
 
 persist_path = Path(settings.PERSIST_PATH)

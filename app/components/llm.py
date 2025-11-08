@@ -1,6 +1,8 @@
 from langchain_openai import ChatOpenAI
 
-from app.core.config import settings
+from app.config import settings
+
+
 llm_model = ChatOpenAI(
     model_name="gpt-4o-mini",
     temperature=0.2,
