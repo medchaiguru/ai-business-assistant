@@ -1,8 +1,8 @@
 '''Main'''
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
 
 from app.models import QueryRequest, QueryResponse
 from app.config import settings
@@ -15,27 +15,10 @@ from app.components.rag_chain import RAGChainWithSources
 
 
 logger = get_logger(__name__)
-app = FastAPI(
-    title=settings.app_name,
-    version=settings.version,
-    debug=settings.debug,
-)
-
-
-def get_rag_chain(request: Request) -> RAGChainWithSources:
-    return request.app.state.rag_instance
-
-
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    logger.info(f"➡️ {request.method} {request.url}")
-    response = await call_next(request)
-    logger.info(f"⬅️ {response.status_code} for {request.url.path}")
-    return response
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """LifeSpan"""
     # Startup code
     logger.info("Application starting up...")
     rag_instance = RAGChainWithSources(retriever, prompt, llm_model)
@@ -44,6 +27,22 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown code
     logger.info("Application shutting down...")
+
+
+app = FastAPI(lifespan=lifespan)
+
+def get_rag_chain(request: Request) -> RAGChainWithSources:
+    """Return RAg chain instance"""
+    return request.app.state.rag_instance
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log requests"""
+    logger.info("%s %s", request.method, request.url)
+    response = await call_next(request)
+    logger.info("%d for %s", response.status_code, request.url.path)
+    return response
 
 
 @app.get("/health")
@@ -58,10 +57,10 @@ async def query_endpoint(
     request: QueryRequest,
     rag_instance: RAGChainWithSources = Depends(get_rag_chain)
     ) -> JSONResponse:
-    logger.info(f"Received query: {request.question}")
+    logger.info("Received query: %s", request.question)
     try:
         result = await rag_instance.ainvoke(request.question)
-        return QueryResponse(answer=result["answer"], sources=result["sources"])
+        return QueryResponse(answer=result["ai_answer"].content, sources=result["sources"])
     except Exception as e:
         logger.exception("Error handling query")
         return JSONResponse(status_code=500, content={"error": str(e)})
