@@ -34,6 +34,12 @@ class Settings(BaseSettings):
         "https://www.sinbimuaythai.com/discord/": "Discord"
     }
 
+    # Fast API Endpoint
+    QUERY_URL = "http://127.0.0.1:8000/query"
+
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+
     model_config = ConfigDict(
         env_file=".env",
         env_file_encoding="utf-8"

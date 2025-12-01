@@ -35,8 +35,12 @@ class RAGChainWithSources(Runnable):
         prompt_text = self.prompt.format(context=context_text, question=input)
 
         # Get LLM answer
-        answer = await self.llm.ainvoke(prompt_text)
-
-        # Return both answer and sources
-        return {"ai_answer": answer, "sources": sources}
-    
+        model_answer = await self.llm.ainvoke(prompt_text)
+        
+        usage: dict = model_answer.get("usage_metadata", {})
+        content : str = model_answer.get("content", "")
+        return {
+            "content": content,
+            "sources": sources,
+            "usage": usage
+        }
