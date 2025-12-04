@@ -36,7 +36,7 @@ class RAGChainWithSources(Runnable):
 
         # Get LLM answer
         model_answer = await self.llm.ainvoke(prompt_text)
-        
+
         usage: dict = model_answer.get("usage_metadata", {})
         content : str = model_answer.get("content", "")
         return {
