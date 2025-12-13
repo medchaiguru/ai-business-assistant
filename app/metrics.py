@@ -54,4 +54,4 @@ class MetricsManager:
 
     async def close(self):
         """Close Redis connection"""
-        await self.r.close()
+        await self.r.aclose()

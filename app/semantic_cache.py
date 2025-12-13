@@ -1,17 +1,22 @@
 """Semantic cache using ChromaDB."""
 
+import time
 from typing import Optional
+import json
+
 from langchain_chroma import Chroma
+from langchain_core.documents import Document
+
 from app.config import settings
 from app.components.embedding import embeddings_model
 from app.logger import get_logger
+
 
 logger = get_logger(__name__)
 
 
 class SemanticCache:
     """Semantic caching using ChromaDB for similar question matching."""
-
     def __init__(self, cache_dir: str = None, similarity_threshold: float = 0.92):
         if cache_dir is None:
             cache_dir = f"{settings.PERSIST_PATH}_cache"
@@ -23,6 +28,7 @@ class SemanticCache:
         )
         self.similarity_threshold = similarity_threshold
 
+
     def get_cached_response(self, question: str) -> Optional[dict]:
         """Get cached response for similar question."""
         try:
@@ -31,28 +37,26 @@ class SemanticCache:
                 question,
                 k=1
             )
-
             if results:
                 doc, distance = results[0]
                 # ChromaDB uses L2 distance (lower = more similar)
                 # Convert to similarity score (0-1 range)
                 similarity = 1 / (1 + distance)
-
                 if similarity >= self.similarity_threshold:
-                    logger.info(f"Cache hit with similarity: {similarity:.2f}")
+                    logger.info("Cache hit with similarity: %.2f", similarity)
                     return {
                         "answer": doc.metadata.get("answer"),
-                        "sources": eval(doc.metadata.get("sources", "[]")),
+                        "sources": json.loads(doc.metadata.get("sources", "[]")),
                         "similarity": similarity
                     }
-            
-            logger.info("Cache miss")
+
+            logger.info("Cache miss for question: %s...", question[:50])
             return None
-            
+
         except Exception as e:
-            logger.error(f"Error querying cache: {e}")
+            logger.error("Error querying cache: %s", e)
             return None
-    
+
     def set_cached_response(
         self,
         question: str,
@@ -61,20 +65,17 @@ class SemanticCache:
     ) -> None:
         """Cache a question/answer pair."""
         try:
-            import time
-            from langchain_core.documents import Document
-            
             doc = Document(
                 page_content=question,
                 metadata={
                     "answer": answer,
-                    "sources": str(sources),
+                    "sources": json.dumps(sources),
                     "timestamp": time.time()
                 }
             )
-            
+
             self.vectorstore.add_documents([doc])
-            logger.info(f"Cached response for question: {question[:50]}...")
-            
+            logger.info("Cached response for question: %s...", question[:50])
+
         except Exception as e:
-            logger.error(f"Error caching response: {e}")
+            logger.error("Error caching response for question: %s... : %s", question[:50], e)

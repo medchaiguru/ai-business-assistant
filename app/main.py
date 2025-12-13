@@ -12,6 +12,8 @@ from app.components.retriever import retriever
 from app.components.prompt import prompt
 from app.components.llm import llm_model
 from app.components.rag_chain import RAGChainWithSources
+from app.workflow import RAGGraph
+from app.semantic_cache import SemanticCache
 from app.metrics import MetricsManager
 from app.models import (
     QueryRequest,
@@ -34,7 +36,8 @@ async def lifespan(app: FastAPI):
     )
     app.state.metrics = metrics_manager
     rag_instance = RAGChainWithSources(retriever, prompt, llm_model)
-    app.state.rag_instance = rag_instance
+    rag_graph_instance = RAGGraph(rag_instance, SemanticCache())
+    app.state.rag_graph_instance = rag_graph_instance
     logger.info("RAG pipeline is ready")
     yield
     # Shutdown code
@@ -44,9 +47,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-def get_rag_chain(request: Request) -> RAGChainWithSources:
+def get_rag_graph(request: Request) -> RAGGraph:
     """Return RAG chain instance"""
-    return request.app.state.rag_instance
+    return request.app.state.rag_graph_instance
 
 
 @app.middleware("http")
@@ -100,18 +103,18 @@ async def health_check():
 async def query_endpoint(
     query_request: QueryRequest,
     request: Request,
-    rag_instance: RAGChainWithSources = Depends(get_rag_chain)
+    rag_graph_instance: RAGGraph = Depends(get_rag_graph)
 ) -> QueryRequest | JSONResponse:
     """Handle query requests using RAG pipeline."""
     logger.info("Received query: %s", query_request.question)
     try:
-        result = await rag_instance.ainvoke(query_request.question)
+        result = await rag_graph_instance.ainvoke(query_request.question)
         if "usage" in result:
             # Store usage metrics in request state for middleware
             request.state.usage_metrics = result["usage"]
 
         return QueryResponse(answer=result["content"], sources=result["sources"])
-    
+
     except Exception as e:
         logger.exception("Error handling query")
         return JSONResponse(status_code=500, content={"error": str(e)})
