@@ -4,11 +4,11 @@ import time
 from typing import Optional
 import json
 
-from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
 from app.config import settings
 from app.components.embedding import embeddings_model
+from app.components.vector_store import load_vector_store
 from app.logger import get_logger
 
 
@@ -17,13 +17,14 @@ logger = get_logger(__name__)
 
 class SemanticCache:
     """Semantic caching using ChromaDB for similar question matching."""
-    def __init__(self, cache_dir: str = None, similarity_threshold: float = 0.92):
-        if cache_dir is None:
-            cache_dir = f"{settings.PERSIST_PATH}_cache"
-
-        self.vectorstore = Chroma(
-            persist_directory=cache_dir,
-            embedding_function=embeddings_model,
+    def __init__(
+            self,
+            cache_dir: str = settings.SEMANTIC_CACHE_PATH,
+            similarity_threshold: float = 0.92
+        ):
+        self.vectorstore = load_vector_store(
+            persist_path=cache_dir,
+            embeddings=embeddings_model,
             collection_name="semantic_cache"
         )
         self.similarity_threshold = similarity_threshold
@@ -42,6 +43,7 @@ class SemanticCache:
                 # ChromaDB uses L2 distance (lower = more similar)
                 # Convert to similarity score (0-1 range)
                 similarity = 1 / (1 + distance)
+                logger.info("Question similarity: %.2f", similarity)
                 if similarity >= self.similarity_threshold:
                     logger.info("Cache hit with similarity: %.2f", similarity)
                     return {

@@ -8,14 +8,16 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.logger import get_logger
-from app.components.retriever import retriever
+from app.components.vector_store import get_retriever_from_vectorstore
 from app.components.prompt import prompt
 from app.components.llm import llm_model
-from app.components.rag_chain import RAGChainWithSources
-from app.workflow import RAGGraph
-from app.semantic_cache import SemanticCache
-from app.metrics import MetricsManager
-from app.models import (
+from app.components.vector_store import load_vector_store
+from app.components.embedding import embeddings_model
+from app.components.rag_chain import RAGChain
+from app.components.workflow import RAGGraph
+from app.components.semantic_cache import SemanticCache
+from app.components.metrics import MetricsManager
+from app.components.models import (
     QueryRequest,
     QueryResponse,
     MetricsResponse
@@ -29,14 +31,17 @@ async def lifespan(app: FastAPI):
     """Application lifespan context manager."""
     # Startup code
     logger.info("Application starting up...")
+
+    vector_store = load_vector_store(settings.PERSIST_PATH, embeddings_model)
+    retriever = get_retriever_from_vectorstore(vector_store, top_k=1)
+    rag_instance = RAGChain(retriever, prompt, llm_model)
+    rag_graph_instance = RAGGraph(rag_instance, SemanticCache())
     # Initialize MetricsManager
     metrics_manager = MetricsManager(
         host=settings.REDIS_HOST,
         port=settings.REDIS_PORT
     )
     app.state.metrics = metrics_manager
-    rag_instance = RAGChainWithSources(retriever, prompt, llm_model)
-    rag_graph_instance = RAGGraph(rag_instance, SemanticCache())
     app.state.rag_graph_instance = rag_graph_instance
     logger.info("RAG pipeline is ready")
     yield

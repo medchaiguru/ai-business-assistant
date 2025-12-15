@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     # Path where the Chroma index will be saved
     PERSIST_PATH: str = "data/chroma_index"
+    SEMANTIC_CACHE_PATH: str = "data/semantic_cache"
 
     # Mapping of URLs to page content type / page name
     URL_PAGE_MAP: dict = {

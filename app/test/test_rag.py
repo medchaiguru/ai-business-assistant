@@ -1,11 +1,11 @@
 from langchain_core.messages.ai import AIMessage
 
-from app.components.rag_chain import RAGChainWithSources
-from app.components.retriever import retriever
+from app.components.rag_chain import RAGChain
+from app.components.vector_store import get_retriever_from_vectorstore
 from app.components.prompt import prompt
 from app.components.llm import llm_model
 
-rag_chain = RAGChainWithSources(retriever, prompt, llm_model)
+rag_chain = RAGChain(retriever, prompt, llm_model)
 query = "Whos is the craziest team member ?"
 print("User query:", query)
 

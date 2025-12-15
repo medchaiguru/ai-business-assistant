@@ -27,13 +27,29 @@ def create_chroma_index(
     return vector_store
 
 
-def load_chroma_index(persist_path: str, embeddings) -> Chroma:
+def load_vector_store(persist_path: str, embeddings, collection_name = "langchain") -> Chroma:
     """
     Load a previously saved Chroma vector store.
     """
     vector_store = Chroma(
         persist_directory=persist_path,
-        embedding_function=embeddings
+        embedding_function=embeddings,
+        collection_name=collection_name
     )
     logger.info("Chroma index loaded from %s", persist_path)
     return vector_store
+
+
+def get_retriever_from_vectorstore(
+    vector_store: Chroma,
+    top_k: int = 3
+    ):
+    """
+    Get a retriever from a Chroma vector store.
+    """
+    retriever = vector_store.as_retriever(
+        search_type="similarity",
+        search_kwargs={"k": top_k}
+    )
+    logger.info("Retriever created with top_k=%d", top_k)
+    return retriever
