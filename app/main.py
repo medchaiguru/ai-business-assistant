@@ -1,46 +1,43 @@
 """Main application file for FastAPI app."""
 
 import time
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from typing import cast
 
-from fastapi import FastAPI, Request, Depends
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.components.embedding import embeddings_model
+from app.components.llm import llm_model
+from app.components.metrics import MetricsManager
+from app.components.models import MetricsResponse, QueryRequest, QueryResponse
+from app.components.prompt import prompt
+from app.components.rag_chain import RAGChain
+from app.components.semantic_cache import SemanticCache
+from app.components.vector_store import (
+    get_retriever_from_vectorstore,
+    load_vector_store,
+)
+from app.components.workflow import RAGGraph
 from app.config import settings
 from app.logger import get_logger
-from app.components.vector_store import get_retriever_from_vectorstore
-from app.components.prompt import prompt
-from app.components.llm import llm_model
-from app.components.vector_store import load_vector_store
-from app.components.embedding import embeddings_model
-from app.components.rag_chain import RAGChain
-from app.components.workflow import RAGGraph
-from app.components.semantic_cache import SemanticCache
-from app.components.metrics import MetricsManager
-from app.components.models import (
-    QueryRequest,
-    QueryResponse,
-    MetricsResponse
-)
-
 
 logger = get_logger(__name__)
 
+
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan context manager."""
     # Startup code
     logger.info("Application starting up...")
 
-    vector_store = load_vector_store(settings.PERSIST_PATH, embeddings_model)
+    vector_store = load_vector_store(settings.DATA_VECTOR_PATH, embeddings_model)
     retriever = get_retriever_from_vectorstore(vector_store, top_k=1)
     rag_instance = RAGChain(retriever, prompt, llm_model)
     rag_graph_instance = RAGGraph(rag_instance, SemanticCache())
     # Initialize MetricsManager
-    metrics_manager = MetricsManager(
-        host=settings.REDIS_HOST,
-        port=settings.REDIS_PORT
-    )
+    metrics_manager = MetricsManager(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
     app.state.metrics = metrics_manager
     app.state.rag_graph_instance = rag_graph_instance
     logger.info("RAG pipeline is ready")
@@ -52,13 +49,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+
 def get_rag_graph(request: Request) -> RAGGraph:
     """Return RAG chain instance"""
-    return request.app.state.rag_graph_instance
+    return cast(RAGGraph, request.app.state.rag_graph_instance)
 
 
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def log_requests(request: Request, call_next: Callable[[Request], Awaitable[JSONResponse]]) -> JSONResponse:
     """Log incoming requests and their response times."""
     start_time = time.time()
     logger.info("%s %s", request.method, request.url)
@@ -75,7 +73,10 @@ async def log_requests(request: Request, call_next):
 
 
 @app.middleware("http")
-async def cache_metrics(request: Request, call_next):
+async def cache_metrics(request: Request,
+    call_next: Callable[[Request],
+    Awaitable[JSONResponse]]
+) -> JSONResponse:
     """Cache metrics to Redis after each request to /query endpoint."""
     response = await call_next(request)
 
@@ -98,8 +99,8 @@ async def cache_metrics(request: Request, call_next):
 
 
 @app.get("/health")
-async def health_check():
-    '''Return Health Status Message'''
+async def health_check() -> dict[str, str]:
+    """Return Health Status Message"""
     logger.info("Health check endpoint called")
     return {"status": "ok"}
 
@@ -108,8 +109,8 @@ async def health_check():
 async def query_endpoint(
     query_request: QueryRequest,
     request: Request,
-    rag_graph_instance: RAGGraph = Depends(get_rag_graph)
-) -> QueryRequest | JSONResponse:
+    rag_graph_instance: RAGGraph = Depends(get_rag_graph), # noqa: B008
+) -> QueryResponse | JSONResponse:
     """Handle query requests using RAG pipeline."""
     logger.info("Received query: %s", query_request.question)
     try:
@@ -118,9 +119,9 @@ async def query_endpoint(
             # Store usage metrics in request state for middleware
             request.state.usage_metrics = result["usage"]
 
-        return QueryResponse(answer=result["content"], sources=result["sources"])
+        return QueryResponse(answer=result["answer"], sources=result["sources"])
 
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-exception-caught
         logger.exception("Error handling query")
         return JSONResponse(status_code=500, content={"error": str(e)})
 

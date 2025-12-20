@@ -1,21 +1,21 @@
 """Metrics management using Redis."""
 
-
 import redis.asyncio as redis
 
 from app.components.llm import llm_cost
-from app.models import MetricsResponse
+from app.components.models import MetricsResponse
 
 
 class MetricsManager:
     """Class to manage and store metrics in Redis."""
-    def __init__(self, host="localhost", port=6379, db=0):
-        self.r = redis.Redis(
-            host=host,
-            port=port,
-            db=db,
-            decode_responses=True
-        )
+
+    def __init__(self,
+        host: str="localhost",
+        port: int=6379,
+        db: int=0
+    ):
+        self.r = redis.Redis(host=host, port=port, db=db, decode_responses=True)
+
 
     async def update(
         self,
@@ -36,7 +36,7 @@ class MetricsManager:
         pipe.ltrim("response_times", 0, 99)  # Keep last 100 values
         await pipe.execute()
 
-    async def get(self) -> dict:
+    async def get(self) -> MetricsResponse:
         """Retrieve current metrics from Redis"""
         tokens = int(await self.r.get("tokens_total") or 0)
         total_time = float(await self.r.get("time_total") or 0.0)
@@ -52,6 +52,6 @@ class MetricsManager:
             cost_total=cost,
         )
 
-    async def close(self):
+    async def close(self) -> None:
         """Close Redis connection"""
         await self.r.aclose()

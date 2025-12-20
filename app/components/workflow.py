@@ -1,48 +1,52 @@
 """RAG workflow with caching using LangGraph."""
 
-from typing import TypedDict
-from langgraph.graph import StateGraph, END
+from typing import Any, TypedDict
 
+from langgraph.graph import END, StateGraph
+
+from app.components.rag_chain import RAGChain
+from app.components.semantic_cache import SemanticCache
 from app.logger import get_logger
-from app.semantic_cache import SemanticCache
 
 logger = get_logger(__name__)
 
 
-class RAGState(TypedDict):
+class RAGState(TypedDict, total=False):
     """State for RAG workflow."""
     question: str
-    answer: str | None
-    sources: list
+    answer: str
+    sources: list[str]
     cached: bool
-    usage: dict | None
+    usage: dict[str, Any] | None
 
 
 class RAGGraph:
     """RAG workflow with semantic caching."""
-    def __init__(self, rag_chain, cache: SemanticCache):
+    def __init__(self, rag_chain: RAGChain, cache: SemanticCache):
         self.rag_chain = rag_chain
         self.cache = cache
         self.graph = self._build_graph()
 
-    def _check_cache(self, state: RAGState) -> dict:
+    async def _check_cache(self, state: RAGState) -> RAGState:
         """Step 1: Check semantic cache."""
-        logger.info("Step 1: Checking cache for question: %s...", state["question"][:50])
+        logger.info(
+            "Step 1: Checking cache for question: %s...", state["question"][:50]
+        )
 
-        cached_result = self.cache.get_cached_response(state["question"])
+        cached_result = await self.cache.get_cached_response(state["question"])
         if cached_result:
-            logger.info("Cache hit! Similarity: %.2f", cached_result['similarity'])
-            return {
-                "answer": cached_result["answer"],
-                "sources": cached_result["sources"],
-                "cached": True,
-                "usage": None
-            }
+            logger.info("Cache hit! Similarity: %.2f", cached_result["similarity"])
+            return RAGState(
+                answer=cached_result["answer"],
+                sources=cached_result["sources"],
+                cached=True,
+                usage=None,
+            )
 
         logger.info("Cache miss - proceeding to RAG")
-        return {"cached": False}
+        return RAGState(cached=False)
 
-    async def _call_rag(self, state: RAGState) -> dict:
+    async def _call_rag(self, state: RAGState) -> RAGState:
         """Step 2: Call RAG chain if cache missed."""
         if state["cached"]:
             logger.info("Skipping RAG - using cached response")
@@ -51,20 +55,21 @@ class RAGGraph:
         logger.info("Step 2: Calling RAG chain")
         result = await self.rag_chain.ainvoke(state["question"])
         logger.info("RAG response received for question: %s...", state["question"][:50])
+
         # Cache the new response
-        self.cache.set_cached_response(
+        await self.cache.set_cached_response(
             question=state["question"],
             answer=result["content"],
-            sources=result["sources"]
+            sources=result["sources"],
         )
 
-        return {
-            "answer": result["content"],
-            "sources": result["sources"],
-            "usage": result.get("usage")
-        }
+        return RAGState(
+            answer=result["content"],
+            sources=result["sources"],
+            usage=result.get("usage"),
+        )
 
-    def _build_graph(self) -> StateGraph:
+    def _build_graph(self) -> Any:
         """Build the LangGraph workflow."""
         workflow = StateGraph(RAGState)
 
@@ -79,21 +84,21 @@ class RAGGraph:
 
         return workflow.compile()
 
-    async def ainvoke(self, question: str) -> dict:
+    async def ainvoke(self, question: str) -> RAGState:
         """Execute the RAG workflow."""
-        initial_state = {
-            "question": question,
-            "answer": None,
-            "sources": [],
-            "cached": False,
-            "usage": None
-        }
+        initial_state= RAGState(
+            question=question,
+            answer="",
+            sources=[],
+            cached=False,
+            usage=None,
+        )
 
         result = await self.graph.ainvoke(initial_state)
 
-        return {
-            "content": result["answer"],
-            "sources": result["sources"],
-            "cached": result["cached"],
-            "usage": result["usage"]
-        }
+        return RAGState(
+            answer=result["answer"],
+            sources=result["sources"],
+            cached=result["cached"],
+            usage=result["usage"],
+        )

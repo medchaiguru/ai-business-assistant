@@ -1,9 +1,6 @@
-import gradio as gr
-import requests
 import time
 
-from app.config import settings
-
+import gradio as gr
 
 # Metrics tracking
 total_tokens = 0
@@ -11,13 +8,14 @@ total_calls = 0
 total_time = 0.0
 budget_used = 0.0
 
+
 def ask_ai(user_message, history):
     """Send the query to FastAPI and return the model response."""
     global total_tokens, total_calls, total_time, budget_used
 
     start = time.time()
-    #res = requests.post(settings.QUERY_URL, json={"question": user_message}).json()
-    res= {"answer": "test", "sources": []}
+    # res = requests.post(settings.QUERY_URL, json={"question": user_message}).json()
+    res = {"answer": "test", "sources": []}
     end = time.time()
 
     answer = res.get("answer", "No response")
@@ -76,13 +74,10 @@ with gr.Blocks() as demo:
                 lines=15,
                 interactive=False,
                 placeholder="Chat will appear here...",
-                elem_classes="chat-message"
+                elem_classes="chat-message",
             )
 
-            user_input = gr.Textbox(
-                placeholder="Ask your question...",
-                label=""
-            )
+            user_input = gr.Textbox(placeholder="Ask your question...", label="")
             send = gr.Button("Send")
 
         with gr.Column(scale=2):

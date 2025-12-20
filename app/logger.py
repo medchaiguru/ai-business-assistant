@@ -1,6 +1,6 @@
 import logging
-from logging.handlers import RotatingFileHandler
 import sys
+from logging.handlers import RotatingFileHandler
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -14,12 +14,14 @@ def get_logger(name: str) -> logging.Logger:
     console_handler.setLevel(logging.INFO)
     console_formatter = logging.Formatter(
         fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
     console_handler.setFormatter(console_formatter)
 
     # File handler (rotates logs when file size exceeds 5MB, keeps 3 backups)
-    file_handler = RotatingFileHandler("logs/app.log", maxBytes=5*1024*1024, backupCount=3)
+    file_handler = RotatingFileHandler(
+        "logs/app.log", maxBytes=5 * 1024 * 1024, backupCount=3
+    )
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(console_formatter)
 

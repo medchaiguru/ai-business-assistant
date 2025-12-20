@@ -1,16 +1,15 @@
 """Semantic cache using ChromaDB."""
 
-import time
-from typing import Optional
 import json
+import time
+from typing import Any
 
 from langchain_core.documents import Document
 
-from app.config import settings
 from app.components.embedding import embeddings_model
 from app.components.vector_store import load_vector_store
+from app.config import settings
 from app.logger import get_logger
-
 
 logger = get_logger(__name__)
 
@@ -18,23 +17,23 @@ logger = get_logger(__name__)
 class SemanticCache:
     """Semantic caching using ChromaDB for similar question matching."""
     def __init__(
-            self,
-            cache_dir: str = settings.SEMANTIC_CACHE_PATH,
-            similarity_threshold: float = 0.92
-        ):
+        self,
+        cache_dir: str = settings.SEMANTIC_CACHE_PATH,
+        similarity_threshold: float = 0.92,
+        collection_name: str = "semantic_cache",
+    ):
         self.vectorstore = load_vector_store(
             persist_path=cache_dir,
             embeddings=embeddings_model,
-            collection_name="semantic_cache"
+            collection_name=collection_name,
         )
         self.similarity_threshold = similarity_threshold
 
-
-    def get_cached_response(self, question: str) -> Optional[dict]:
+    async def get_cached_response(self, question: str) -> dict[str, Any] | None:
         """Get cached response for similar question."""
         try:
             # Use similarity_search_with_score to get distance
-            results = self.vectorstore.similarity_search_with_score(
+            results = await self.vectorstore.asimilarity_search_with_score(
                 question,
                 k=1
             )
@@ -49,21 +48,21 @@ class SemanticCache:
                     return {
                         "answer": doc.metadata.get("answer"),
                         "sources": json.loads(doc.metadata.get("sources", "[]")),
-                        "similarity": similarity
+                        "similarity": similarity,
                     }
 
             logger.info("Cache miss for question: %s...", question[:50])
             return None
 
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             logger.error("Error querying cache: %s", e)
             return None
 
-    def set_cached_response(
+    async def set_cached_response(
         self,
         question: str,
         answer: str,
-        sources: list
+        sources: list[str]
     ) -> None:
         """Cache a question/answer pair."""
         try:
@@ -72,12 +71,14 @@ class SemanticCache:
                 metadata={
                     "answer": answer,
                     "sources": json.dumps(sources),
-                    "timestamp": time.time()
-                }
+                    "timestamp": time.time(),
+                },
             )
 
-            self.vectorstore.add_documents([doc])
+            await self.vectorstore.aadd_documents([doc])
             logger.info("Cached response for question: %s...", question[:50])
 
-        except Exception as e:
-            logger.error("Error caching response for question: %s... : %s", question[:50], e)
+        except Exception as e: # pylint: disable=broad-exception-caught
+            logger.error(
+                "Error caching response for question: %s... : %s", question[:50], e
+            )
