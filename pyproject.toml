@@ -12,6 +12,7 @@ dependencies = [
     "langchain-chroma>=1.0.0",
     "langchain-openai>=1.0.2",
     "langchain-text-splitters>=1.0.0",
+    "langsmith>=0.4.39",
     "mypy>=1.19.1",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.11.0",

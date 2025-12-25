@@ -15,15 +15,26 @@ class Settings(BaseSettings):
     # === API Keys / External Services ===
     OPENAI_API_KEY: SecretStr | None = None
 
+    # === LangSmith Tracing ===
+    # Enable tracing (default to False so it doesn't break if not configured)
+    LANGCHAIN_TRACING_V2: bool = True
+    LANGCHAIN_ENDPOINT: str = "https://eu.api.smith.langchain.com"
+    LANGCHAIN_API_KEY: SecretStr | None = None
+    LANGCHAIN_PROJECT: str = "ai-customer-support"
+
     # default folder to save crawled data
     CRAWLED_DATA_DIR: str = "data"
 
     # Source data
     DATA_PATH: str = "src/Sinbi Muay Thai_data.json"
 
-    # Path where the Chroma index will be saved
+    # Path where the Chroma index will be saved (DEV mode)
     DATA_VECTOR_PATH: str = "data/chroma_index"
     SEMANTIC_CACHE_PATH: str = "data/semantic_cache"
+
+    # === ChromaDB Server Settings ===
+    CHROMA_SERVER_HOST: str = "localhost"
+    CHROMA_SERVER_HTTP_PORT: int = 8000
 
     # Mapping of URLs to page content type / page name
     URL_PAGE_MAP: dict[str, str] = {

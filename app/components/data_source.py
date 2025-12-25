@@ -1,10 +1,14 @@
 import json
 from pathlib import Path
+from typing import Any
 
 from langchain_core.documents import Document
 
 
-def json_data_to_langchain_docs(json_path: str, url_page_map: dict) -> list[Document]:
+def json_data_to_langchain_docs(
+    json_path: str,
+    url_page_map: dict[str, Any]
+) -> list[Document]:
     path = Path(json_path)
     with open(path, encoding="utf-8") as f:
         data = json.load(f)

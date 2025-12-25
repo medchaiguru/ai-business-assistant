@@ -45,7 +45,7 @@ async def test_cache_hit(
     result = await rag_graph.ainvoke(question)
 
     # Verify
-    assert result["content"] == "Cached Answer"
+    assert result["answer"] == "Cached Answer"
     assert result["sources"] == ["source1"]
     assert result["cached"] is True
 
@@ -66,7 +66,7 @@ async def test_cache_miss(
     mock_cache.get_cached_response.return_value = None
 
     rag_response = {
-        "content": "RAG Answer",
+        "answer": "RAG Answer",
         "sources": ["source2"],
         "usage": {"tokens": 100},
     }
@@ -76,7 +76,7 @@ async def test_cache_miss(
     result = await rag_graph.ainvoke(question)
 
     # Verify
-    assert result["content"] == "RAG Answer"
+    assert result["answer"] == "RAG Answer"
     assert result["sources"] == ["source2"]
     assert result["cached"] is False
     assert result["usage"] == {"tokens": 100}

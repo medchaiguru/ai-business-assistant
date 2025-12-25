@@ -8,7 +8,6 @@ from langchain_core.documents import Document
 
 from app.components.embedding import embeddings_model
 from app.components.vector_store import load_vector_store
-from app.config import settings
 from app.logger import get_logger
 
 logger = get_logger(__name__)
@@ -18,7 +17,7 @@ class SemanticCache:
     """Semantic caching using ChromaDB for similar question matching."""
     def __init__(
         self,
-        cache_dir: str = settings.SEMANTIC_CACHE_PATH,
+        cache_dir: str = "",
         similarity_threshold: float = 0.92,
         collection_name: str = "semantic_cache",
     ):

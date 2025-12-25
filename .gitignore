@@ -8,8 +8,7 @@ __pycache__/
 # uv
 uv.lock
 
-.env
-.venv
+.gradio/
 
 data/
 
