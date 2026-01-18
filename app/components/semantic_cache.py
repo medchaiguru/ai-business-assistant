@@ -4,10 +4,15 @@ import json
 import time
 from typing import Any
 
+from chromadb.api import ClientAPI
 from langchain_core.documents import Document
 
 from app.components.embedding import embeddings_model
-from app.components.vector_store import load_vector_store
+from app.components.vector_store import (
+    load_vector_store_from_path,
+    load_vector_store_from_remote,
+)
+from app.config import settings
 from app.logger import get_logger
 
 logger = get_logger(__name__)
@@ -17,15 +22,22 @@ class SemanticCache:
     """Semantic caching using ChromaDB for similar question matching."""
     def __init__(
         self,
-        cache_dir: str = "",
+        client: ClientAPI,
         similarity_threshold: float = 0.92,
-        collection_name: str = "semantic_cache",
+        collection_name: str = settings.QUERY_ANSWER_CACHE,
     ):
-        self.vectorstore = load_vector_store(
-            persist_path=cache_dir,
-            embeddings=embeddings_model,
-            collection_name=collection_name,
-        )
+        if settings.CHROMA_SERVER_PERSISTENCE:
+            self.vectorstore = load_vector_store_from_path(
+                collection_name=collection_name,
+                persist_path=settings.SEMANTIC_CACHE_PATH,
+                embeddings=embeddings_model
+            )
+        else:
+            self.vectorstore = load_vector_store_from_remote(
+                client=client,
+                embeddings=embeddings_model,
+                collection_name=collection_name,
+            )
         self.similarity_threshold = similarity_threshold
 
     async def get_cached_response(self, question: str) -> dict[str, Any] | None:

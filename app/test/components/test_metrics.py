@@ -1,6 +1,6 @@
 """Tests for MetricsManager using a Dockerized Redis container."""
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
@@ -10,7 +10,7 @@ from app.components.metrics import MetricsManager
 
 
 @pytest.fixture(scope="module")
-async def redis_container() -> AsyncGenerator[RedisContainer, None]:
+def redis_container() -> Generator[RedisContainer, None, None]:
     """Spin up a Redis container for testing."""
     with RedisContainer("redis:8-alpine") as redis:
         yield redis
@@ -25,6 +25,10 @@ async def metrics_manager(
     port = redis_container.get_exposed_port(6379)
 
     manager = MetricsManager(host=host, port=port)
+
+    # Ensure a clean state for each test
+    await manager.redis_client.flushall()
+
     yield manager
     await manager.close()
 
@@ -70,9 +74,9 @@ async def test_multiple_updates(metrics_manager: MetricsManager) -> None:
 
     metrics = await metrics_manager.get()
 
-    assert metrics.requests_total == 3
-    assert metrics.tokens_total == 550  # (100+50) + (200+50)
-    assert metrics.average_response_time == (1.0 + 2.0 + 0.5) / 3  # (1.0 + 2.0) / 2
+    assert metrics.requests_total == 2
+    assert metrics.tokens_total == 400  # (100+50) + (200+50)
+    assert metrics.average_response_time == (1.0 + 2.0) / 2  # (1.0 + 2.0) / 2
 
 
 @pytest.mark.asyncio
@@ -83,9 +87,9 @@ async def test_response_time_history(metrics_manager: MetricsManager) -> None:
     await metrics_manager.update(10, 10, 0.2)
 
     # Verify directly in Redis that the list exists
-    # Note: MetricsManager.get() doesn't return the list in the Pydantic model currently,
-    # so we check the Redis key directly for this test.
-    times = await metrics_manager.r.lrange("response_times", 0, -1) # type: ignore
-    assert len(times) == 5
+    times = await metrics_manager.redis_client.lrange(
+        "response_times", 0, -1
+        ) # type: ignore
+    assert len(times) == 2
     assert float(times[0]) == 0.2  # Lpush puts newest first
     assert float(times[1]) == 0.1

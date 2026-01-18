@@ -16,8 +16,11 @@ async def query_endpoint(
     request: Request,
     rag_graph_instance: RAGGraph = Depends(get_rag_graph), # noqa: B008
 ) -> QueryResponse | JSONResponse:
+
     """Handle query requests using RAG pipeline."""
+
     logger.info("Received query: %s", query_request.question)
+
     try:
         result = await rag_graph_instance.ainvoke(query_request.question)
         if "usage" in result:
@@ -27,5 +30,6 @@ async def query_endpoint(
         return QueryResponse(answer=result["answer"], sources=result["sources"])
 
     except Exception as e: # pylint: disable=broad-exception-caught
+
         logger.exception("Error handling query")
         return JSONResponse(status_code=500, content={"error": str(e)})

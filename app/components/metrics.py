@@ -14,7 +14,7 @@ class MetricsManager:
         port: int=6379,
         db: int=0
     ):
-        self.r = redis.Redis(host=host, port=port, db=db, decode_responses=True)
+        self.redis_client = redis.Redis(host=host, port=port, db=db, decode_responses=True)
 
 
     async def update(
@@ -24,7 +24,7 @@ class MetricsManager:
         response_time: float,
     ) -> None:
         """Update metrics in Redis"""
-        pipe = self.r.pipeline()
+        pipe = self.redis_client.pipeline()
         pipe.incrby("tokens_total", input_tokens + output_tokens)
         cost = llm_cost(input_tokens, output_tokens)
         pipe.incrbyfloat("cost_total", cost)
@@ -38,10 +38,19 @@ class MetricsManager:
 
     async def get(self) -> MetricsResponse:
         """Retrieve current metrics from Redis"""
-        tokens = int(await self.r.get("tokens_total") or 0)
-        total_time = float(await self.r.get("time_total") or 0.0)
-        cost = float(await self.r.get("cost_total") or 0.0)
-        requests = int(await self.r.get("requests_total") or 0)
+        # Use mget to fetch all keys in ONE network round-trip
+        values = await self.redis_client.mget([
+            "tokens_total",
+            "time_total",
+            "cost_total",
+            "requests_total"
+        ])
+
+        # values is a list corresponding to the keys above
+        tokens = int(values[0] or 0)
+        total_time = float(values[1] or 0.0)
+        cost = float(values[2] or 0.0)
+        requests = int(values[3] or 0)
 
         avg_time = total_time / requests if requests else 0.0
 
@@ -54,4 +63,4 @@ class MetricsManager:
 
     async def close(self) -> None:
         """Close Redis connection"""
-        await self.r.aclose()
+        await self.redis_client.aclose()

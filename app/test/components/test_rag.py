@@ -8,11 +8,15 @@ from app.components.prompt import prompt
 from app.components.rag_chain import RAGChain
 from app.components.vector_store import (
     get_retriever_from_vectorstore,
-    load_vector_store,
+    load_vector_store_from_path,
 )
 from app.config import settings
 
-vector_store = load_vector_store(settings.DATA_VECTOR_PATH, embeddings_model)
+vector_store = load_vector_store_from_path(
+    collection_name=settings.BUSINESS_DATA,
+    persist_path=settings.DATA_VECTOR_PATH,
+    embeddings=embeddings_model
+)
 retriever = get_retriever_from_vectorstore(vector_store, top_k=1)
 rag_chain = RAGChain(retriever, prompt, llm_model)
 query = "Whos is the craziest team member ?"

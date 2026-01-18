@@ -8,18 +8,12 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.api.routers import admin, health, metrics, query
-from app.components.embedding import embeddings_model
-from app.components.llm import llm_model
-from app.components.metrics import MetricsManager
-from app.components.prompt import prompt
-from app.components.rag_chain import RAGChain
-from app.components.semantic_cache import SemanticCache
-from app.components.vector_store import (
-    get_retriever_from_vectorstore,
-    load_vector_store,
+from app.api.startup import (
+    load_chroma_client,
+    load_metrics_manager,
+    load_rag_graph,
+    load_retriever,
 )
-from app.components.workflow import RAGGraph
-from app.config import settings
 from app.logger import get_logger
 
 logger = get_logger(__name__)
@@ -27,18 +21,20 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan context manager."""
-    # Startup code
     logger.info("Application starting up...")
 
-    vector_store = load_vector_store(embeddings_model)
-    retriever = get_retriever_from_vectorstore(vector_store, top_k=1)
-    rag_instance = RAGChain(retriever, prompt, llm_model)
-    rag_graph_instance = RAGGraph(rag_instance, SemanticCache())
-    # Initialize MetricsManager
-    metrics_manager = MetricsManager(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
-    app.state.metrics = metrics_manager
-    app.state.rag_graph_instance = rag_graph_instance
-    logger.info("RAG pipeline is ready")
+    # load chroma client to app state
+    load_chroma_client(app)
+
+    # initialize MetricsManager into app state
+    load_metrics_manager(app)
+
+    # load vector store retriever to app state
+    load_retriever(app)
+
+    # load rag graph instance to app state
+    load_rag_graph(app)
+
     yield
     # Shutdown code
     await app.state.metrics.close()

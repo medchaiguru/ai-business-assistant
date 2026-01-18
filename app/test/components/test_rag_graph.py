@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -15,21 +15,21 @@ def mock_rag_chain() -> AsyncMock:
 
 
 @pytest.fixture
-def mock_cache() -> MagicMock:
+def mock_cache() -> AsyncMock:
     """Creates a mock SemanticCache."""
-    cache = MagicMock(spec=SemanticCache)
+    cache = AsyncMock(spec=SemanticCache)
     return cache
 
 
 @pytest.fixture
-def rag_graph(mock_rag_chain: AsyncMock, mock_cache: MagicMock) -> RAGGraph:
+def rag_graph(mock_rag_chain: AsyncMock, mock_cache: AsyncMock) -> RAGGraph:
     """Creates a RAGGraph with mocked dependencies."""
     return RAGGraph(mock_rag_chain, mock_cache)
 
 
 @pytest.mark.asyncio
 async def test_cache_hit(
-    rag_graph: RAGGraph, mock_cache: MagicMock, mock_rag_chain: AsyncMock
+    rag_graph: RAGGraph, mock_cache: AsyncMock, mock_rag_chain: AsyncMock
 ) -> None:
     """Test that cache hit returns cached response and skips RAG."""
     # Setup
@@ -58,19 +58,19 @@ async def test_cache_hit(
 
 @pytest.mark.asyncio
 async def test_cache_miss(
-    rag_graph: RAGGraph, mock_cache: MagicMock, mock_rag_chain: AsyncMock
+    rag_graph: RAGGraph, mock_cache: AsyncMock, mock_rag_chain: AsyncMock
 ) -> None:
     """Test that cache miss calls RAG chain and updates cache."""
     # Setup
     question = "New Question"
     mock_cache.get_cached_response.return_value = None
 
-    rag_response = {
-        "answer": "RAG Answer",
+    rag_chain_response = {
+        "content": "RAG Answer",
         "sources": ["source2"],
         "usage": {"tokens": 100},
     }
-    mock_rag_chain.ainvoke.return_value = rag_response
+    mock_rag_chain.ainvoke.return_value = rag_chain_response
 
     # Execute
     result = await rag_graph.ainvoke(question)

@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from logging.handlers import RotatingFileHandler
 
@@ -19,6 +20,8 @@ def get_logger(name: str) -> logging.Logger:
     console_handler.setFormatter(console_formatter)
 
     # File handler (rotates logs when file size exceeds 5MB, keeps 3 backups)
+    # Ensure log directory exists
+    os.makedirs("logs", exist_ok=True)
     file_handler = RotatingFileHandler(
         "logs/app.log", maxBytes=5 * 1024 * 1024, backupCount=3
     )

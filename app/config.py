@@ -22,9 +22,6 @@ class Settings(BaseSettings):
     LANGCHAIN_API_KEY: SecretStr | None = None
     LANGCHAIN_PROJECT: str = "ai-customer-support"
 
-    # default folder to save crawled data
-    CRAWLED_DATA_DIR: str = "data"
-
     # Source data
     DATA_PATH: str = "src/Sinbi Muay Thai_data.json"
 
@@ -32,9 +29,16 @@ class Settings(BaseSettings):
     DATA_VECTOR_PATH: str = "data/chroma_index"
     SEMANTIC_CACHE_PATH: str = "data/semantic_cache"
 
+    # Collection Names
+    BUSINESS_DATA: str = "sinbi_muaythai"
+    QUERY_ANSWER_CACHE: str = "query_answer_cache"
+
     # === ChromaDB Server Settings ===
     CHROMA_SERVER_HOST: str = "localhost"
     CHROMA_SERVER_HTTP_PORT: int = 8000
+
+    # Enable persistence on ChromaDB server)
+    CHROMA_SERVER_PERSISTENCE: bool = False
 
     # Mapping of URLs to page content type / page name
     URL_PAGE_MAP: dict[str, str] = {

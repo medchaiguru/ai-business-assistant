@@ -17,7 +17,7 @@ class RAGChain(Runnable[str, dict[str, Any]]):
     """
 
     def __init__(self,
-        retriever:VectorStoreRetriever,
+        retriever:VectorStoreRetriever | None,
         prompt:ChatPromptTemplate,
         llm:ChatOpenAI
     ):
@@ -38,11 +38,15 @@ class RAGChain(Runnable[str, dict[str, Any]]):
         self,
         input: str, # pylint: disable=redefined-builtin
         config: RunnableConfig | None = None,
-        **_kwargs: Any
+        **kwargs: Any
     ) -> dict[str, Any]:
         """Override Async invoke method of Runnable"""
+
+        # Allow overriding retriever at runtime
+        retriever = kwargs.get("retriever", self.retriever)
+
         # Retrieve context + sources
-        docs = await self.retriever.ainvoke(input, config=config)
+        docs = await retriever.ainvoke(input, config=config)
         context_text = "\n\n---\n\n".join([d.page_content for d in docs])
         sources = [d.metadata.get("source_url", "") for d in docs]
 
