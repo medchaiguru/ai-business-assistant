@@ -1,5 +1,4 @@
 """Tests for the SemanticCache component."""
-import time
 from collections.abc import Generator
 from typing import Any
 
@@ -20,7 +19,7 @@ def chroma_container() -> Generator[DockerContainer, None, None]:
     with container as chroma:
         # Wait for Chroma to be ready by checking logs
         #wait_for_logs(chroma, "Uvicorn running on", timeout=30)
-        time.sleep(2)
+        #time.sleep(2)
         yield chroma
 
 
