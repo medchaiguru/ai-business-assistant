@@ -1,3 +1,4 @@
+import json
 import os
 from collections.abc import Generator
 from unittest.mock import patch
@@ -5,6 +6,7 @@ from unittest.mock import patch
 import chromadb
 import pytest
 import requests
+import time
 from chromadb.api import ClientAPI
 from chromadb.errors import ChromaError
 from fastapi.testclient import TestClient
@@ -12,6 +14,7 @@ from testcontainers.core.container import DockerContainer
 from testcontainers.core.network import Network
 from testcontainers.core.waiting_utils import wait_container_is_ready
 
+from app.config import settings
 from app.main import app
 
 client = TestClient(app)
@@ -101,7 +104,10 @@ def chroma_container(network: Network) -> Generator[DockerContainer, None, None]
         yield chroma
 
 @pytest.fixture(scope="module")
-def app_container(chroma_container: DockerContainer, env_file: dict[str, str]) -> Generator[DockerContainer, None, None]:
+def app_container(
+    chroma_container: DockerContainer,
+    env_file: dict[str, str]
+) -> Generator[DockerContainer, None, None]:
     """Spin up the FastAPI app in a Docker container."""
     container = DockerContainer("aisupport:latest")  # Use your built image
     container.with_exposed_ports(8000)
@@ -144,8 +150,27 @@ def test_health_check(app_url: str) -> None:
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
-def test_index_data(app_url: str) -> None:
+def test_index_data(app_url: str, chroma_container: DockerContainer) -> None:
     """Helper to trigger indexing via admin endpoint."""
     response = requests.post(f"{app_url}/admin/index", timeout=5)
     assert response.status_code == 200
     assert response.json()["status"] == "accepted"
+
+    # Optionally, verify that data was indexed in ChromaDB
+    chroma_client = _get_chroma_client(
+        host=chroma_container.get_container_host_ip(),
+        port=chroma_container.get_exposed_port(8000)
+    )
+    time.sleep(10)
+    collection = chroma_client.get_collection(name=settings.BUSINESS_DATA)
+    count = collection.count()
+    assert count > 0, "Expected indexed data in ChromaDB collection"
+    print(f"\n[TEST] Indexed {count} \
+          items in ChromaDB collection '{settings.BUSINESS_DATA}'\n")
+
+    head_docs = collection.peek(limit=3)
+    for i, doc in enumerate(head_docs["documents"]):
+        print(f"[TEST] Document {i+1}")
+        print(doc[:100]) # Print first 100 characters
+        metadata = head_docs["metadatas"][i]
+        print(f"Metadata: {json.dumps(metadata, indent=2)}")
